@@ -94,12 +94,9 @@ fi
 [ -f "/etc/.env.sh" ] && rm -Rf "/etc/.env.sh"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional commands
-[ -d "/data/db" ] || mv -fv "/var/lib/mysql" "/data/db"
-if [ -d "/var/lib/mysql" ] && [ -d "/data/db" ]; then
-  rm -Rf "/var/lib/mysql"
-  ln -sf "/data/db" "/var/lib/mysql"
-fi
+[ -d "/data/db" ] || mkdir -p "/data/db"
 if [ -f "/config/ampache/ampache.conf" ]; then
+  rm -Rf "/var/www/ampache/config/ampache.cfg.php"
   ln -sf "/config/ampache/ampache.conf" "/var/www/ampache/config/ampache.cfg.php"
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -126,7 +123,7 @@ healthcheck) # Docker healthcheck
 
 *) # Execute primary command
   if [ $# -eq 0 ]; then
-    mysqld
+    mysqld --user=root --socket=/var/run/mysqld/mysqld.sock --datadir=/data/db
   else
     __exec_bash "/bin/bash"
   fi
