@@ -5,7 +5,8 @@ WORKDIR /var/www/ampache
 ARG LICENSE=WTFPL \
   IMAGE_NAME=ampache \
   TIMEZONE=America/New_York \
-  PORT=80
+  PORT=80 \
+  AMPACHE_VERSION=5.5.2
 
 ENV SHELL=/bin/bash \
   TERM=xterm-256color \
@@ -15,9 +16,9 @@ ENV SHELL=/bin/bash \
 RUN mkdir -p /bin/ /config/ /data/ && \
   rm -Rf /bin/.gitkeep /config/.gitkeep /data/.gitkeep && \
   apk update -U --no-cache && \
-  apk add --no-cache mariadb composer && \
-  git clone https://github.com/ampache/ampache /var/www/ampache && \
-  composer install --prefer-source --no-interaction 
+  apk add --no-cache unzip mariadb flac && \
+  wget "https://github.com/ampache/ampache/releases/download/${AMPACHE_VERSION}/ampache-${AMPACHE_VERSION}_all.zip" -O "/tmp/ampache.zip" && \
+  unzip -q "/tmp/ampache.zip" -d "/var/www/ampache"
 
 COPY ./bin/. /usr/local/bin/
 COPY ./config/. /config/
