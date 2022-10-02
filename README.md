@@ -18,8 +18,8 @@ docker run -d \
 --name casjaysdevdocker-ampache \
 --hostname casjaysdev-ampache \
 -e TZ=${TIMEZONE:-America/New_York} \
--v $HOME/.local/share/docker/storage/ampache/ampache/data:/data:z \
--v $HOME/.local/share/docker/storage/ampache/ampache/config:/config:z \
+-v $HOME/.local/share/srv/docker/ampache/files/data:/data:z \
+-v $HOME/.local/share/srv/docker/ampache/files/config:/config:z \
 -v $HOME/Music:/data/music:z \
 -p 80:80 \
 casjaysdevdocker/ampache:latest
@@ -37,8 +37,8 @@ services:
       - TZ=America/New_York
       - HOSTNAME=casjaysdev-ampache
     volumes:
-      - $HOME/.local/share/docker/storage/ampache/data:/data:z
-      - $HOME/.local/share/docker/storage/ampache/config:/config:z
+      - $HOME/.local/share/srv/docker/ampache/files/data:/data:z
+      - $HOME/.local/share/srv/docker/ampache/files/config:/config:z
     ports:
       - 80:80
     restart: always
@@ -47,4 +47,4 @@ services:
 ## Authors  
 
 🤖 casjay: [Github](https://github.com/casjay) [Docker](https://hub.docker.com/r/casjay) 🤖  
-⛵ CasjaysDevdDocker: [Github](https://github.com/casjaysdev) [Docker](https://hub.docker.com/r/casjaysdevdocker) ⛵  
+⛵ CasjaysDevDocker: [Github](https://github.com/casjaysdevdocker) [Docker](https://hub.docker.com/r/casjaysdevdocker) ⛵  
