@@ -18,8 +18,9 @@ docker run -d \
 --name casjaysdevdocker-ampache \
 --hostname casjaysdev-ampache \
 -e TZ=${TIMEZONE:-America/New_York} \
--v $HOME/.local/share/docker/storage/ampache/ampache/data:/data \
--v $HOME/.local/share/docker/storage/ampache/ampache/config:/config \
+-v $HOME/.local/share/docker/storage/ampache/ampache/data:/data:z \
+-v $HOME/.local/share/docker/storage/ampache/ampache/config:/config:z \
+-v $HOME/Music:/data/music:z
 -p 80:80 \
 casjaysdevdocker/ampache:latest
 ```
