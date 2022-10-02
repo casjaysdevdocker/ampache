@@ -13,7 +13,7 @@ ENV SHELL=/bin/bash \
   HOSTNAME=${HOSTNAME:-casjaysdev-$IMAGE_NAME} \
   TZ=$TIMEZONE
 
-RUN mkdir -p /bin/ /config/ /data/ && \
+RUN mkdir -p /bin/ /config/ /data/ /var/lib/mysql && \
   rm -Rf /bin/.gitkeep /config/.gitkeep /data/.gitkeep && \
   apk update -U --no-cache && \
   apk add --no-cache unzip mariadb flac && \
