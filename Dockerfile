@@ -17,7 +17,7 @@ RUN mkdir -p /bin/ /config/ /data/ /var/lib/mysql && \
   rm -Rf /bin/.gitkeep /config/.gitkeep /data/.gitkeep && \
   apk update -U --no-cache && \
   apk add --no-cache unzip mariadb flac && \
-  wget "https://github.com/ampache/ampache/releases/download/${AMPACHE_VERSION}/ampache-${AMPACHE_VERSION}_all.zip" -O "/tmp/ampache.zip" && \
+  wget -nv "https://github.com/ampache/ampache/releases/download/${AMPACHE_VERSION}/ampache-${AMPACHE_VERSION}_all.zip" -O "/tmp/ampache.zip" && \
   unzip -q "/tmp/ampache.zip" -d "/var/www/ampache"
 
 COPY ./bin/. /usr/local/bin/
