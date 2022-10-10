@@ -94,7 +94,7 @@ fi
 [ -f "/etc/.env.sh" ] && rm -Rf "/etc/.env.sh"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional commands
-if [ ! -d "/data/db" ]; then  
+if [ ! -d "/data/db" ]; then
   mkdir -p "/data/db"
  [ -f "/etc/init.d/mariadb" ] && /etc/init.d/mariadb setup
 fi
@@ -126,7 +126,9 @@ healthcheck) # Docker healthcheck
 
 *) # Execute primary command
   if [ $# -eq 0 ]; the
+    php-fpm8 --allow-to-run-as-root --nodaemonize --fpm-config /etc/php8/php-fpm.conf &
     mysqld --user=root --socket=/data/db/mysqld.sock --datadir=/data/db
+    nginx -q -c "$CONFIG"
   else
     __exec_bash "/bin/bash"
   fi

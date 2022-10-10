@@ -1,4 +1,4 @@
-FROM casjaysdevdocker/php:latest as build
+FROM casjaysdevdocker/nginx:latest as build
 
 WORKDIR /var/www/ampache
 
