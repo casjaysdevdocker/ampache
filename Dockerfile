@@ -1,6 +1,6 @@
-FROM casjaysdevdocker/nginx:latest as build
+FROM casjaysdevdocker/apache:latest as build
 
-WORKDIR /var/www/ampache
+WORKDIR /usr/local/share/ampache
 
 ARG LICENSE=WTFPL \
   IMAGE_NAME=ampache \
