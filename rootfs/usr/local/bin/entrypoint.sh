@@ -12,8 +12,8 @@
 # @@Description      :  entrypoint point for ampache
 # @@Changelog        :  New script
 # @@TODO             :  Better documentation
-# @@Other            :  
-# @@Resource         :  
+# @@Other            :
+# @@Resource         :
 # @@Terminal App     :  no
 # @@sudo/root        :  no
 # @@Template         :  other/docker-entrypoint
@@ -210,7 +210,11 @@ if [ -d "/config" ]; then
     if [ -n "$create_conf" ]; then
       create_conf_name="$(basename "$create_conf")"
       if [ -e "/etc/$create_conf_name" ]; then
-        cp -Rf "$create_conf" "/etc/$create_conf_name" 2>/dev/null
+        if [ -d "/etc/$create_conf_name" ]; then
+          cp -Rf "$create_conf/." "/etc/$create_conf_name/" 2>/dev/null
+        else
+          cp -Rf "$create_conf" "/etc/$create_conf_name" 2>/dev/null
+        fi
       fi
     fi
   done
