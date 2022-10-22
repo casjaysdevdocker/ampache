@@ -1,4 +1,4 @@
-FROM casjaysdevdocker/alpine:latest AS build
+FROM casjaysdevdocker/apache:latest AS build
 
 ARG ALPINE_VERSION="v3.16"
 
