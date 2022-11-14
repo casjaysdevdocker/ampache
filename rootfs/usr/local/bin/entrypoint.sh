@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202210191606-git
+##@Version           :  202211131942-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.com
-# @@License          :  LICENSE.md
+# @@License          :  WTFPL
 # @@ReadME           :  entrypoint.sh --help
 # @@Copyright        :  Copyright: (c) 2022 Jason Hempstead, Casjays Developments
-# @@Created          :  Wednesday, Oct 19, 2022 16:06 EDT
+# @@Created          :  Sunday, Nov 13, 2022 19:42 EST
 # @@File             :  entrypoint.sh
 # @@Description      :  entrypoint point for ampache
 # @@Changelog        :  New script
@@ -31,13 +31,13 @@ __exec_command() {
   return ${exitCode:-$?}
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-__pcheck() { [ -n "$(which pgrep 2>/dev/null)" ] && pgrep -x "$1" || return 1; }
+__curl() { curl -q -LSsf -o /dev/null "$@" &>/dev/null || return 10; }
 __find() { find "$1" -mindepth 1 -type ${2:-f,d} 2>/dev/null | grep '^' || return 10; }
-__curl() { curl -q -LSsf -o /dev/null -s -w "200" "$@" 2>/dev/null || return 10; }
+__pcheck() { [ -n "$(which pgrep 2>/dev/null)" ] && pgrep -x "$1" &>/dev/null || return 10; }
 __pgrep() { __pcheck "${1:-$SERVICE_NAME}" || ps aux 2>/dev/null | grep -Fw " ${1:-$SERVICE_NAME}" | grep -qv ' grep' || return 10; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __certbot() {
-  [ -n "$DOMANNAME" ] && [ -n "$CERT_BOT_MAIL" ] || { echo "The variables DOMANNAME and CERT_BOT_MAIL are set" && exit 1; }
+  [ -n "$DOMAINNAME" ] && [ -n "$CERT_BOT_MAIL" ] || { echo "The variables DOMAINNAME and CERT_BOT_MAIL are set" && exit 1; }
   [ "$SSL_CERT_BOT" = "true" ] && type -P certbot &>/dev/null || { export SSL_CERT_BOT="" && return 10; }
   certbot $1 --agree-tos -m $CERT_BOT_MAIL certonly --webroot -w "${WWW_ROOT_DIR:-/data/htdocs/www}" -d $DOMAINNAME -d $DOMAINNAME \
     --put-all-related-files-into "$SSL_DIR" -key-path "$SSL_KEY" -fullchain-path "$SSL_CERT"
@@ -45,9 +45,7 @@ __certbot() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __heath_check() {
   status=0 health="Good"
-  __pgrep ${1:-} || status=$((status + 1))
-  #__curl "https://1.1.1.1" || status=$((status + 1))
-  #__curl "http://localhost:$HTTP_PORT/server-health" || status=$((status + 1))
+  start-ampache.sh healthcheck || status=$((status + 1))
   [ "$status" -eq 0 ] || health="Errors reported see docker logs --follow $CONTAINER_NAME"
   echo "$(uname -s) $(uname -m) is running and the health is: $health"
   return ${status:-$?}
@@ -55,7 +53,9 @@ __heath_check() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __start_all_services() {
   echo "$service_message"
-  bash -l
+  start-mysqld.sh &
+  start-php-fpm.sh &
+  start-ampache.sh
   return $?
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -70,10 +70,7 @@ DISPLAY="${DISPLAY:-}"
 LANG="${LANG:-C.UTF-8}"
 DOMAINNAME="${DOMAINNAME:-}"
 TZ="${TZ:-America/New_York}"
-HTTP_PORT="${HTTP_PORT:-80}"
-HTTPS_PORT="${HTTPS_PORT:-}"
-SERVICE_PORT="${SERVICE_PORT:-}"
-SERVICE_NAME="${CONTAINER_NAME:-}"
+SERVICE_PORT="${SERVICE_PORT:-$PORT}"
 HOSTNAME="${HOSTNAME:-casjaysdev-ampache}"
 HOSTADMIN="${HOSTADMIN:-root@${DOMAINNAME:-$HOSTNAME}}"
 CERT_BOT_MAIL="${CERT_BOT_MAIL:-certbot-mail@casjay.net}"
@@ -89,14 +86,18 @@ LOCAL_BIN_DIR="${LOCAL_BIN_DIR:-/usr/local/bin}"
 DEFAULT_DATA_DIR="${DEFAULT_DATA_DIR:-/usr/local/share/template-files/data}"
 DEFAULT_CONF_DIR="${DEFAULT_CONF_DIR:-/usr/local/share/template-files/config}"
 DEFAULT_TEMPLATE_DIR="${DEFAULT_TEMPLATE_DIR:-/usr/local/share/template-files/defaults}"
-CONTAINER_IP_ADDRESS="$(ip a 2>/dev/null | grep 'inet' | grep -v '127.0.0.1' | awk '{print $2}' | sed 's|/*||g')"
-[ -n "$HTTP_PORT" ] || [ -n "$HTTPS_PORT" ] || HTTP_PORT="$SERVICE_PORT"
-[ "$HTTPS_PORT" = "443" ] && HTTP_PORT="$HTTPS_PORT" && SSL_ENABLED="true"
+CONTAINER_IP_ADDRESS="$(ip a 2>/dev/null | grep 'inet' | grep -v '127.0.0.1' | awk '{print $2}' | sed 's|/.*||g')"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional variables and variable overrides
-#SERVICE_NAME=""
+SERVICE_NAME="ampache"
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Show start message
 export service_message="Starting $CONTAINER_NAME"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+[ "$SERVICE_PORT" = "443" ] && SSL_ENABLED="true"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Check if this is a new container
 [ -f "/data/.docker_has_run" ] && DATA_DIR_INITIALIZED="true" || DATA_DIR_INITIALIZED="false"
@@ -104,12 +105,12 @@ export service_message="Starting $CONTAINER_NAME"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # export variables
 export LANG TZ DOMAINNAME HOSTNAME HOSTADMIN SSL_ENABLED SSL_DIR SSL_CA SSL_KEY SERVICE_NAME
-export SSL_DIR HTTP_PORT HTTPS_PORT LOCAL_BIN_DIR DEFAULT_CONF_DIR CONTAINER_IP_ADDRESS
-export SSL_CONTAINER_DIR SSL_CERT_BOT DISPLAY CONFIG_DIR_INITIALIZED DATA_DIR_INITIALIZED
+export SSL_DIR LOCAL_BIN_DIR DEFAULT_CONF_DIR CONTAINER_IP_ADDRESS SSL_CONTAINER_DIR
+export SSL_CERT_BOT DISPLAY CONFIG_DIR_INITIALIZED DATA_DIR_INITIALIZED
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # import variables from file
 [ -f "/root/env.sh" ] && . "/root/env.sh"
-[ -f "/config/env.sh" ] && "/config/env.sh"
+[ -f "/config/env.sh" ] && . "/config/env.sh"
 [ -f "/config/.env.sh" ] && . "/config/.env.sh"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set timezone
@@ -169,8 +170,10 @@ SET_USR_BIN=""
 if [ -n "$SET_USR_BIN" ]; then
   echo "Setting up bin"
   for create_bin in $SET_USR_BIN; do
-    create_bin_name="$(basename "$create_bin")"
-    ln -sf "$create_bin" "$LOCAL_BIN_DIR/$create_bin_name"
+    if [ -n "$create_bin" ]; then
+      create_bin_name="$(basename "$create_bin")"
+      ln -sf "$create_bin" "$LOCAL_BIN_DIR/$create_bin_name"
+    fi
   done
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -180,7 +183,14 @@ if [ "$CONFIG_DIR_INITIALIZED" = "false" ] && [ -d "/config" ]; then
   if [ -n "$DEFAULT_TEMPLATE_DIR" ] && [ -d "$DEFAULT_TEMPLATE_DIR" ]; then
     for create_template in "$DEFAULT_TEMPLATE_DIR"/*; do
       create_template_name="$(basename "$create_template")"
-      cp -Rf "$create_template" "/config/$create_template_name" 2>/dev/null
+      if [ -n "$create_template" ]; then
+        if [ -d "$create_template" ]; then
+          mkdir -p "/config/$create_template_name/"
+          cp -Rf "$create_template/." "/config/$create_template_name/" 2>/dev/null
+        else
+          cp -Rf "$create_template" "/config/$create_template_name" 2>/dev/null
+        fi
+      fi
     done
   fi
 fi
@@ -190,7 +200,14 @@ if [ "$CONFIG_DIR_INITIALIZED" = "false" ] && [ -d "/config" ]; then
   echo "Copying custom config files"
   for create_config in "$DEFAULT_CONF_DIR"/*; do
     create_config_name="$(basename "$create_config")"
-    cp -Rf "$create_config" "/config/$create_config_name" 2>/dev/null
+    if [ -n "$create_config" ]; then
+      if [ -d "$create_config" ]; then
+        mkdir -p "/config/$create_config_name"
+        cp -Rf "$create_config/." "/config/$create_config_name/" 2>/dev/null
+      else
+        cp -Rf "$create_config" "/config/$create_config_name" 2>/dev/null
+      fi
+    fi
   done
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -199,18 +216,26 @@ if [ "$DATA_DIR_INITIALIZED" = "false" ] && [ -d "/data" ]; then
   echo "Copying data files"
   for create_data in "$DEFAULT_DATA_DIR"/*; do
     create_data_name="$(basename "$create_data")"
-    cp -Rf "$create_data" "/data/$create_data_name" 2>/dev/null
+    if [ -n "$create_data" ]; then
+      if [ -d "$create_data" ]; then
+        mkdir -p "/data/$create_data_name"
+        cp -Rf "$create_data/." "/data/$create_data_name/" 2>/dev/null
+      else
+        cp -Rf "$create_data" "/data/$create_data_name" 2>/dev/null
+      fi
+    fi
   done
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Copy /config to /etc
 if [ -d "/config" ]; then
-  echo "Copying /config to /etc"
+  [ "$CONFIG_DIR_INITIALIZED" = "false" ] && echo "Copying /config to /etc"
   for create_conf in /config/*; do
     if [ -n "$create_conf" ]; then
       create_conf_name="$(basename "$create_conf")"
       if [ -e "/etc/$create_conf_name" ]; then
         if [ -d "/etc/$create_conf_name" ]; then
+          mkdir -p "/etc/$create_conf_name/"
           cp -Rf "$create_conf/." "/etc/$create_conf_name/" 2>/dev/null
         else
           cp -Rf "$create_conf" "/etc/$create_conf_name" 2>/dev/null
@@ -281,3 +306,5 @@ esac
 # end of entrypoint
 exit ${exitCode:-$?}
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# ex: ts=2 sw=2 et filetype=sh

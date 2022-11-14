@@ -3,48 +3,34 @@
 ampache README  
   
   
-## Run container
+## Install my system scripts  
 
 ```shell
-dockermgr update ampache
+ sudo bash -c "$(curl -q -LSsf "https://github.com/systemmgr/installer/raw/main/install.sh")"
+ sudo systemmgr --config && sudo systemmgr install scripts  
 ```
 
-### via command line
+## Get source files  
 
 ```shell
-docker pull casjaysdevdocker/ampache:latest && \
-docker run -d \
---restart always \
---name casjaysdevdocker-ampache \
---hostname casjaysdev-ampache \
--e TZ=${TIMEZONE:-America/New_York} \
--v $HOME/.local/share/srv/docker/ampache/files/data:/data:z \
--v $HOME/.local/share/srv/docker/ampache/files/config:/config:z \
--v $HOME/Music:/data/music:z \
--p 80:80 \
-casjaysdevdocker/ampache:latest
+dockermgr download src ampache
 ```
 
-### via docker-compose
+OR
 
-```yaml
-version: "2"
-services:
-  ampache:
-    image: casjaysdevdocker/ampache
-    container_name: ampache
-    environment:
-      - TZ=America/New_York
-      - HOSTNAME=casjaysdev-ampache
-    volumes:
-      - $HOME/.local/share/srv/docker/ampache/files/data:/data:z
-      - $HOME/.local/share/srv/docker/ampache/files/config:/config:z
-    ports:
-      - 80:80
-    restart: always
+```shell
+git clone "https://github.com/casjaysdevdocker/ampache" "$HOME/Projects/github/casjaysdevdocker/ampache"
+```
+
+## Build container  
+
+```shell
+cd "$HOME/Projects/github/casjaysdevdocker/ampache"
+buildx 
 ```
 
 ## Authors  
 
 🤖 casjay: [Github](https://github.com/casjay) [Docker](https://hub.docker.com/r/casjay) 🤖  
-⛵ CasjaysDevDocker: [Github](https://github.com/casjaysdevdocker) [Docker](https://hub.docker.com/r/casjaysdevdocker) ⛵  
+📽 dockermgr: [Github](https://github.com/dockermgr) [Docker](https://hub.docker.com/r/dockermgr) 📽  
+⛵ CasjaysDev Docker: [Github](https://github.com/casjaysdevdocker) [Docker](https://hub.docker.com/r/casjaysdevdocker) ⛵  

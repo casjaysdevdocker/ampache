@@ -1,31 +1,31 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202210191606-git
+##@Version           :  202211131942-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.com
-# @@License          :  LICENSE.md
+# @@License          :  WTFPL
 # @@ReadME           :  start-ampache.sh --help
 # @@Copyright        :  Copyright: (c) 2022 Jason Hempstead, Casjays Developments
-# @@Created          :  Wednesday, Oct 19, 2022 16:06 EDT
+# @@Created          :  Sunday, Nov 13, 2022 19:42 EST
 # @@File             :  start-ampache.sh
 # @@Description      :  script to start ampache
 # @@Changelog        :  New script
 # @@TODO             :  Better documentation
-# @@Other            :
-# @@Resource         :
+# @@Other            :  
+# @@Resource         :  
 # @@Terminal App     :  no
 # @@sudo/root        :  no
 # @@Template         :  other/start-service
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set functions
-__pcheck() { [ -n "$(which pgrep 2>/dev/null)" ] && pgrep -x "$1" || return 1; }
+__curl() { curl -q -LSsf -o /dev/null "$@" &>/dev/null || return 10; }
 __find() { find "$1" -mindepth 1 -type ${2:-f,d} 2>/dev/null | grep '^' || return 10; }
-__curl() { curl -q -LSsf -o /dev/null -s -w "200" "$@" 2>/dev/null || return 10; }
+__pcheck() { [ -n "$(which pgrep 2>/dev/null)" ] && pgrep -x "$1" &>/dev/null || return 10; }
 __pgrep() { __pcheck "$1" || ps aux 2>/dev/null | grep -Fw " $1" | grep -qv ' grep' || return 10; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __certbot() {
-  [ -n "$DOMANNAME" ] && [ -n "$CERT_BOT_MAIL" ] || { echo "The variables DOMANNAME and CERT_BOT_MAIL are set" && exit 1; }
+  [ -n "$DOMAINNAME" ] && [ -n "$CERT_BOT_MAIL" ] || { echo "The variables DOMAINNAME and CERT_BOT_MAIL are set" && exit 1; }
   [ "$SSL_CERT_BOT" = "true" ] && type -P certbot &>/dev/null || { export SSL_CERT_BOT="" && return 10; }
   certbot $1 --agree-tos -m $CERT_BOT_MAIL certonly --webroot -w "${WWW_ROOT_DIR:-/data/htdocs/www}" -d $DOMAINNAME -d $DOMAINNAME \
     --put-all-related-files-into "$SSL_DIR" -key-path "$SSL_KEY" -fullchain-path "$SSL_CERT"
@@ -33,11 +33,19 @@ __certbot() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __heath_check() {
   status=0 health="Good"
-  __pgrep ${1:-} || status=$((status + 1))
-  #__curl "http://localhost:$HTTP_PORT/server-health" || status=$((status + 1))
+  __pgrep ${1:-} &>/dev/null || status=$((status + 1))
+  #__curl "http://localhost:$SERVICE_PORT/server-health" || status=$((status + 1))
   [ "$status" -eq 0 ] || health="Errors reported see docker logs --follow $CONTAINER_NAME"
-  echo "$(uname -s) $(uname -m) is running and the health is: $health"
   return ${status:-$?}
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+__exec_command() {
+  local exitCode=0
+  local cmd="${*:-bash -l}"
+  echo "Executing: $cmd"
+  $cmd || exitCode=1
+  [ "$exitCode" = 0 ] || exitCode=10
+  return ${exitCode:-$?}
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set variables
@@ -45,9 +53,7 @@ DISPLAY="${DISPLAY:-}"
 LANG="${LANG:-C.UTF-8}"
 DOMAINNAME="${DOMAINNAME:-}"
 TZ="${TZ:-America/New_York}"
-HTTP_PORT="${HTTP_PORT:-80}"
-HTTPS_PORT="${HTTPS_PORT:-}"
-SERVICE_PORT="${SERVICE_PORT:-$HTTP_PORT}"
+SERVICE_PORT="${SERVICE_PORT:-$PORT}"
 SERVICE_NAME="${CONTAINER_NAME:-}"
 HOSTNAME="${HOSTNAME:-casjaysdev-ampache}"
 HOSTADMIN="${HOSTADMIN:-root@${DOMAINNAME:-$HOSTNAME}}"
@@ -65,15 +71,18 @@ CONFIG_DIR_INITIALIZED="${CONFIG_DIR_INITIALIZED:-}"
 DEFAULT_DATA_DIR="${DEFAULT_DATA_DIR:-/usr/local/share/template-files/data}"
 DEFAULT_CONF_DIR="${DEFAULT_CONF_DIR:-/usr/local/share/template-files/config}"
 DEFAULT_TEMPLATE_DIR="${DEFAULT_TEMPLATE_DIR:-/usr/local/share/template-files/defaults}"
-CONTAINER_IP_ADDRESS="$(ip a 2>/dev/null | grep 'inet' | grep -v '127.0.0.1' | awk '{print $2}' | sed 's|/*||g')"
-[ -n "$HTTP_PORT" ] || [ -n "$HTTPS_PORT" ] || HTTP_PORT="$SERVICE_PORT"
-[ "$HTTPS_PORT" = "443" ] && HTTP_PORT="$HTTPS_PORT" && SSL_ENABLED="true"
+CONTAINER_IP_ADDRESS="$(ip a 2>/dev/null | grep 'inet' | grep -v '127.0.0.1' | awk '{print $2}' | sed 's|/.*||g')"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Overwrite variables
 #SERVICE_PORT=""
 SERVICE_NAME="ampache"
 SERVICE_COMMAND="$SERVICE_NAME"
-export exec_message="Starting $SERVICE_NAME on $CONTAINER_IP_ADDRESS:$SERVICE_PORT"
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Show start message
+start_message="Starting $SERVICE_NAME on $CONTAINER_IP_ADDRESS:$SERVICE_PORT"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+[ "$SERVICE_PORT" = "443" ] && SSL_ENABLED="true"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Pre copy commands
 
@@ -111,11 +120,11 @@ fi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # APP Variables overrides
 [ -f "/root/env.sh" ] && . "/root/env.sh"
-[ -f "/config/env.sh" ] && "/config/env.sh"
+[ -f "/config/env.sh" ] && . "/config/env.sh"
 [ -f "/config/.env.sh" ] && . "/config/.env.sh"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Actions based on env
-sed 's|/data/htdocs/www|/var/www/ampache|g' "/etc/apache2/vhosts.d/default.conf"
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # begin main app
 case "$1" in
@@ -144,9 +153,8 @@ certbot)
     echo "$SERVICE_NAME is running"
   else
     touch "/tmp/$SERVICE_NAME.pid"
-    __exec_command start-mysqld &
-    __exec_command start-php-fpm8 &
-    __exec_command start-apache2 || rm -Rf "/tmp/$SERVICE_NAME.pid"
+    echo "$start_message"
+    __exec_command "$SERVICE_COMMAND" || rm -Rf "/tmp/$SERVICE_NAME.pid"
   fi
   ;;
 esac
@@ -160,3 +168,4 @@ exitCode="${exitCode:-$?}"
 exit ${exitCode:-$?}
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # end
+# ex: ts=2 sw=2 et filetype=sh

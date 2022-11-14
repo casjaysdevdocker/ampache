@@ -1,15 +1,15 @@
-FROM casjaysdevdocker/apache:latest AS build
+FROM casjaysdevdocker/php:latest AS build
 
 ARG ALPINE_VERSION="v3.16"
+ARG AMPACHE_VERSION="5.5.2"
 
 ARG DEFAULT_DATA_DIR="/usr/local/share/template-files/data" \
   DEFAULT_CONF_DIR="/usr/local/share/template-files/config" \
   DEFAULT_TEMPLATE_DIR="/usr/local/share/template-files/defaults"
 
 ARG PACK_LIST="mariadb flac"
-ARG AMPACHE_VERSION=5.5.2
 
-ENV LANG=en_US.utf8 \
+ENV LANG=en_US.UTF-8 \
   ENV=ENV=~/.bashrc \
   TZ="America/New_York" \
   SHELL="/bin/sh" \
@@ -25,8 +25,9 @@ RUN set -ex; \
   echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/main" >>"/etc/apk/repositories"; \
   echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/community" >>"/etc/apk/repositories"; \
   if [ "${ALPINE_VERSION}" = "edge" ]; then echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/testing" >>"/etc/apk/repositories" ; fi ; \
-  apk update --update-cache && apk add --no-cache ${PACK_LIST} && \
-  wget -nv "https://github.com/ampache/ampache/releases/download/${AMPACHE_VERSION}/ampache-${AMPACHE_VERSION}_all.zip" -O "/tmp/ampache.zip" && \
+  apk update --update-cache && apk add --no-cache ${PACK_LIST}
+
+RUN wget -nv "https://github.com/ampache/ampache/releases/download/${AMPACHE_VERSION}/ampache-${AMPACHE_VERSION}_all.zip" -O "/tmp/ampache.zip" && \
   unzip -q "/tmp/ampache.zip" -d "/var/www/ampache"
 
 RUN echo 'Running cleanup' ; \
@@ -52,7 +53,7 @@ ARG \
   BUILD_VERSION="latest" \
   LICENSE="MIT" \
   IMAGE_NAME="ampache" \
-  BUILD_DATE="Wed Oct 19 04:06:33 PM EDT 2022" \
+  BUILD_DATE="Sun Nov 13 07:42:48 PM EST 2022" \
   TIMEZONE="America/New_York"
 
 LABEL maintainer="CasjaysDev <docker-admin@casjaysdev.com>" \
@@ -70,9 +71,10 @@ LABEL maintainer="CasjaysDev <docker-admin@casjaysdev.com>" \
   org.opencontainers.image.vcs-url="https://github.com/casjaysdevdocker/${IMAGE_NAME}" \
   org.opencontainers.image.url.source="https://github.com/casjaysdevdocker/${IMAGE_NAME}" \
   org.opencontainers.image.documentation="https://hub.docker.com/r/casjaysdevdocker/${IMAGE_NAME}" \
-  org.opencontainers.image.description="Containerized version of ${IMAGE_NAME}"
+  org.opencontainers.image.description="Containerized version of ${IMAGE_NAME}" \
+  com.github.containers.toolbox="false"
 
-ENV LANG=en_US.utf8 \
+ENV LANG=en_US.UTF-8 \
   ENV=~/.bashrc \
   SHELL="/bin/bash" \
   PORT="${SERVICE_PORT}" \
