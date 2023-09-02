@@ -137,7 +137,7 @@ RUN set -ex \
   export PHP_VERSION=$PHP_VERSION NODE_VERSION=$NODE_VERSION NODE_MANAGER=$NODE_MANAGER; \
   bash -c "$(curl -q -LSsf "https://github.com/templatemgr/apache2/raw/main/install.sh")"; \
   bash -c "$(curl -q -LSsf "https://github.com/templatemgr/mariadb/raw/main/install.sh")"; \
-  ;bash -c "$(curl -q -LSsf "https://github.com/templatemgr/php/raw/main/install.sh")"; \
+  bash -c "$(curl -q -LSsf "https://github.com/templatemgr/php/raw/main/install.sh")"; \
   echo ""
 
 RUN \
