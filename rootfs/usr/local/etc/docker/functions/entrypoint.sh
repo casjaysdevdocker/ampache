@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202308281453-git
+##@Version           :  202309030111-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  git-admin@casjaysdev.pro
-# @@License          :  WTFPL
+# @@License          :  LICENSE.md
 # @@ReadME           :  docker-entrypoint --help
 # @@Copyright        :  Copyright: (c) 2023 Jason Hempstead, Casjays Developments
-# @@Created          :  Monday, Aug 28, 2023 14:53 EDT
+# @@Created          :  Sunday, Sep 03, 2023 01:40 EDT
 # @@File             :  docker-entrypoint
 # @@Description      :  functions for my docker containers
 # @@Changelog        :  newScript
@@ -28,6 +28,51 @@
 # Set bash options
 [ "$DEBUGGER" = "on" ] && echo "Enabling debugging" && set -o pipefail -x$DEBUGGER_OPTIONS || set -o pipefail
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# set variables from function calls
+export INIT_DATE="${INIT_DATE:-$(date)}"
+export START_SERVICES="${START_SERVICES:-yes}"
+export ENTRYPOINT_MESSAGE="${ENTRYPOINT_MESSAGE:-yes}"
+export ENTRYPOINT_FIRST_RUN="${ENTRYPOINT_FIRST_RUN:-yes}"
+export DATA_DIR_INITIALIZED="${DATA_DIR_INITIALIZED:-false}"
+export CONFIG_DIR_INITIALIZED="${CONFIG_DIR_INITIALIZED:-false}"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# System
+export LANG="${LANG:-C.UTF-8}"
+export LC_ALL="${LANG:-C.UTF-8}"
+export TZ="${TZ:-${TIMEZONE:-America/New_York}}"
+export HOSTNAME="${FULL_DOMAIN_NAME:-${SERVER_HOSTNAME:-$HOSTNAME}}"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Default directories
+export SSL_DIR="${SSL_DIR:-/config/ssl}"
+export SSL_CA="${SSL_CERT:-/config/ssl/ca.crt}"
+export SSL_KEY="${SSL_KEY:-/config/ssl/localhost.pem}"
+export SSL_CERT="${SSL_CERT:-/config/ssl/localhost.crt}"
+export BACKUP_DIR="${BACKUP_DIR:-/data/backups}"
+export LOCAL_BIN_DIR="${LOCAL_BIN_DIR:-/usr/local/bin}"
+export DEFAULT_DATA_DIR="${DEFAULT_DATA_DIR:-/usr/local/share/template-files/data}"
+export DEFAULT_CONF_DIR="${DEFAULT_CONF_DIR:-/usr/local/share/template-files/config}"
+export DEFAULT_TEMPLATE_DIR="${DEFAULT_TEMPLATE_DIR:-/usr/local/share/template-files/defaults}"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+CONTAINER_IP4_ADDRESS="${CONTAINER_IP4_ADDRESS:-$(__get_ip4)}"
+CONTAINER_IP6_ADDRESS="${CONTAINER_IP6_ADDRESS:-$(__get_ip6)}"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Additional
+export SET_RANDOM_PASS="${SET_RANDOM_PASS:-$(__random_password 16)}"
+export PHP_INI_DIR="${PHP_INI_DIR:-$(__find_php_ini)}"
+export PHP_BIN_DIR="${PHP_BIN_DIR:-$(__find_php_bin)}"
+export HTTPD_CONFIG_FILE="${HTTPD_CONFIG_FILE:-$(__find_httpd_conf)}"
+export NGINX_CONFIG_FILE="${NGINX_CONFIG_FILE:-$(__find_nginx_conf)}"
+export MYSQL_CONFIG_FILE="${MYSQL_CONFIG_FILE:-$(__find_mysql_conf)}"
+export PGSQL_CONFIG_FILE="${PGSQL_CONFIG_FILE:-$(__find_pgsql_conf)}"
+export LIGHTTPD_CONFIG_FILE="${LIGHTTPD_CONFIG_FILE:-$(__find_lighttpd_conf)}"
+export MARIADB_CONFIG_FILE="${MARIADB_CONFIG_FILE:-$(__find_mysql_conf)}"
+export POSTGRES_CONFIG_FILE="${POSTGRES_CONFIG_FILE:-$(__find_pgsql_conf)}"
+export MONGODB_CONFIG_FILE="${MONGODB_CONFIG_FILE:-$(__find_mongodb_conf)}"
+export ENTRYPOINT_PID_FILE="${ENTRYPOINT_PID_FILE:-/run/init.d/entrypoint.pid}"
+export ENTRYPOINT_INIT_FILE="${ENTRYPOINT_INIT_FILE:-/config/.entrypoint.done}"
+export ENTRYPOINT_DATA_INIT_FILE="${ENTRYPOINT_DATA_INIT_FILE:-/data/.docker_has_run}"
+export ENTRYPOINT_CONFIG_INIT_FILE="${ENTRYPOINT_CONFIG_INIT_FILE:-/config/.docker_has_run}"
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __printf_space() { printf "%-${1:-30}s%s\n" "${2}" "${3}"; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __cd() { [ -d "$1" ] && builtin cd "$1" || return 1; }
@@ -41,8 +86,8 @@ __is_dir_empty() { [ "$(ls -A "$1" 2>/dev/null | wc -l)" -eq 0 ] && return 0 || 
 __pcheck() { [ -n "$(which pgrep 2>/dev/null)" ] && pgrep -o "$1" &>/dev/null || return 10; }
 __file_exists_with_content() { [ -n "$1" ] && [ -f "$1" ] && [ -s "$1" ] && return 0 || return 2; }
 __sed() { sed -i 's|'$1'|'$2'|g' "$3" &>/dev/null || sed -i "s|$1|$2|g" "$3" &>/dev/null || return 1; }
-__ps() { [ -f "$(type -P ps)" ] && ps "$@" 2>/dev/null | grep -Fw " ${1:-$GEN_SCRIPT_REPLACE_APPNAME}" || return 10; }
-__pgrep() { __pcheck "${1:-GEN_SCRIPT_REPLACE_APPNAME}" || __ps "${1:-$GEN_SCRIPT_REPLACE_APPNAME}" | grep -qv ' grep' || return 10; }
+__ps() { [ -f "$(type -P ps)" ] && ps "$@" 2>/dev/null | grep -Fw " ${1:-$ampache}" || return 10; }
+__pgrep() { __pcheck "${1:-ampache}" || __ps "${1:-$ampache}" | grep -qv ' grep' || return 10; }
 __get_ip6() { ip a 2>/dev/null | grep -w 'inet6' | awk '{print $2}' | grep -vE '^::1|^fe' | sed 's|/.*||g' | head -n1 | grep '^' || echo ''; }
 __get_ip4() { ip a 2>/dev/null | grep -w 'inet' | awk '{print $2}' | grep -vE '^127.0.0' | sed 's|/.*||g' | head -n1 | grep '^' || echo '127.0.0.1'; }
 __find_file_relative() { find "$1"/* -not -path '*env/*' -not -path '.git*' -type f 2>/dev/null | sed 's|'$1'/||g' | sort -u | grep -v '^$' | grep '^' || false; }
@@ -133,6 +178,7 @@ __certbot() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __create_ssl_cert() {
+  local SSL_DIR="${SSL_DIR:-/etc/ssl}"
   if ! __certbot create; then
     [ -f "/config/env/ssl.sh" ] && . "/config/env/ssl.sh"
     [ -n "$SSL_DIR" ] || { echo "SSL_DIR is unset" && return 1; }
@@ -264,17 +310,17 @@ __cron() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __replace() {
   [ $# -eq 3 ] && [ -e "$3" ] || return 1
-  grep -s -qR "$1" "$3" &>/dev/null && __sed "$1" "$2" "$3" || return 0
-  grep -s -qR "$2" "$3" && printf '%s\n' "Changed $1 to $2 in $3" && return 0 || {
+  grep -s -qFR -- "$1" "$3" &>/dev/null && __sed "$1" "$2" "$3" || return 0
+  grep -s -qFR -- "$2" "$3" && printf '%s\n' "Changed $1 to $2 in $3" && return 0 || {
     printf '%s\n' "Failed to change $1 in $3" >&2 && return 2
   }
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __find_replace() {
   [ $# -eq 3 ] && [ -e "$3" ] || return 1
-  grep -s -qR "$1" "$3" &>/dev/null || return 0
+  grep -s -qR -- "$1" "$3" &>/dev/null || return 0
   find "$3" -type f -not -path '.git*' -exec sed -i "s|$1|$2|g" {} \;
-  grep -s -qR "$2" "$3" && printf '%s\n' "Changed $1 to $2 in $3" && return 0 || {
+  grep -s -qR -- "$2" "$3" && printf '%s\n' "Changed $1 to $2 in $3" && return 0 || {
     printf '%s\n' "Failed to change $1 in $3" >&2 && return 2
   }
 }
@@ -557,14 +603,15 @@ EOF
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 __initialize_web_health() {
+  local www_dir="${1:-${WWW_ROOT_DIR:-/usr/share/httpd/default}}"
   [ $# -eq 1 ] && [ -d "$1" ] || return 1
-  if ! echo "$1" | grep -q '/usr/share/httpd'; then
-    [ -d "$1/health" ] || mkdir -p "$1/health"
-    [ -f "$1/health/index.txt" ] || echo 'OK' >"$1/health/index.txt"
-    [ -f "$1/health/index.json" ] || echo '{ "status": "OK" }' >"$1/health/index.json"
-    __find_replace "REPLACE_CONTAINER_IP4" "${REPLACE_CONTAINER_IP4:-127.0.0.1}" "$1"
-    __find_replace "REPLACE_COPYRIGHT_FOOTER" "${COPYRIGHT_FOOTER:-Copyright 1999 - $(date +'%Y')}" "$1"
-    __find_replace "REPLACE_LAST_UPDATED_ON_MESSAGE" "${LAST_UPDATED_ON_MESSAGE:-$(date +'Last updated on: %Y-%m-%d at %H:%M:%S')}" "$1"
+  if ! echo "$www_dir" | grep -q '/usr/share/httpd'; then
+    [ -d "$www_dir/health" ] || mkdir -p "$www_dir/health"
+    [ -f "$www_dir/health/index.txt" ] || echo 'OK' >"$www_dir/health/index.txt"
+    [ -f "$www_dir/health/index.json" ] || echo '{ "status": "OK" }' >"$www_dir/health/index.json"
+    __find_replace "REPLACE_CONTAINER_IP4" "${REPLACE_CONTAINER_IP4:-127.0.0.1}" "$www_dir"
+    __find_replace "REPLACE_COPYRIGHT_FOOTER" "${COPYRIGHT_FOOTER:-Copyright 1999 - $(date +'%Y')}" "$www_dir"
+    __find_replace "REPLACE_LAST_UPDATED_ON_MESSAGE" "${LAST_UPDATED_ON_MESSAGE:-$(date +'Last updated on: %Y-%m-%d at %H:%M:%S')}" "$www_dir"
   fi
   if [ -d "/usr/share/httpd" ]; then
     __find_replace "REPLACE_CONTAINER_IP4" "${REPLACE_CONTAINER_IP4:-127.0.0.1}" "/usr/share/httpd"
@@ -792,20 +839,14 @@ __start_php_dev_server() {
   fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# set variables from function calls
-SET_RANDOM_PASS="${SET_RANDOM_PASS:-$(__random_password 16)}"
-CONTAINER_IP4_ADDRESS="${CONTAINER_IP4_ADDRESS:-$(__get_ip4)}"
-CONTAINER_IP6_ADDRESS="${CONTAINER_IP6_ADDRESS:-$(__get_ip6)}"
-PHP_INI_DIR="${PHP_INI_DIR:-$(__find_php_ini)}"
-PHP_BIN_DIR="${PHP_BIN_DIR:-$(__find_php_bin)}"
-HTTPD_CONFIG_FILE="${HTTPD_CONFIG_FILE:-$(__find_httpd_conf)}"
-NGINX_CONFIG_FILE="${NGINX_CONFIG_FILE:-$(__find_nginx_conf)}"
-LIGHTTPD_CONFIG_FILE="${LIGHTTPD_CONFIG_FILE:-$(__find_lighttpd_conf)}"
-MARIADB_CONFIG_FILE="${MARIADB_CONFIG_FILE:-$(__find_mysql_conf)}"
-POSTGRES_CONFIG_FILE="${POSTGRES_CONFIG_FILE:-$(__find_pgsql_conf)}"
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # export variables
-
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# is already Initialized
+[ -z "$DATA_DIR_INITIALIZED" ] && { [ -f "$ENTRYPOINT_DATA_INIT_FILE" ] && DATA_DIR_INITIALIZED="true" || DATA_DIR_INITIALIZED="false"; }
+[ -z "$CONFIG_DIR_INITIALIZED" ] && { [ -f "$ENTRYPOINT_CONFIG_INIT_FILE" ] && CONFIG_DIR_INITIALIZED="true" || CONFIG_DIR_INITIALIZED="false"; }
+[ -z "$ENTRYPOINT_FIRST_RUN" ] && { { [ -f "$ENTRYPOINT_PID_FILE" ] || [ -f "$ENTRYPOINT_INIT_FILE" ]; } && ENTRYPOINT_FIRST_RUN="no" || ENTRYPOINT_FIRST_RUN="true"; }
+export ENTRYPOINT_DATA_INIT_FILE DATA_DIR_INITIALIZED ENTRYPOINT_CONFIG_INIT_FILE CONFIG_DIR_INITIALIZED
+export ENTRYPOINT_PID_FILE ENTRYPOINT_INIT_FILE ENTRYPOINT_FIRST_RUN
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # export the functions
 export -f __start_init_scripts
