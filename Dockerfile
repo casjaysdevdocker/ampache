@@ -1,10 +1,10 @@
 # Docker image for ampache using the alpine template
 ARG IMAGE_NAME="ampache"
 ARG PHP_SERVER="ampache"
-ARG BUILD_DATE="202502050844"
+ARG BUILD_DATE="202509161146"
 ARG LANGUAGE="en_US.UTF-8"
 ARG TIMEZONE="America/New_York"
-ARG WWW_ROOT_DIR="/usr/share/webapps/ampache"
+ARG WWW_ROOT_DIR="/usr/local/share/httpd/default"
 ARG DEFAULT_FILE_DIR="/usr/local/share/template-files"
 ARG DEFAULT_DATA_DIR="/usr/local/share/template-files/data"
 ARG DEFAULT_CONF_DIR="/usr/local/share/template-files/config"
@@ -54,10 +54,7 @@ ARG PHP_SERVER
 ARG SHELL_OPTS
 ARG PATH
 
-ARG PACK_LIST="mariadb mariadb-client apache2 \
-  ${PHP_VERSION} ${PHP_VERSION}-apache2 ${PHP_VERSION}-mysqli ${PHP_VERSION}-pdo_mysql \
-  ${PHP_VERSION}-gd ${PHP_VERSION}-xml ${PHP_VERSION}-curl ${PHP_VERSION}-mbstring \
-  ${PHP_VERSION}-zip ${PHP_VERSION}-json composer ffmpeg git"
+ARG PACK_LIST="mariadb-server-utils mariadb-client mariadb pwgen apache2 apache2-ctl apache2-lua apache2-ssl apache2-ldap apache2-icons apache2-http2 apache2-error apache2-proxy apache2-brotli apache2-webdav apache2-mod-wsgi apache-mod-fcgid apache2-proxy-html composer php84-bcmath php84-bz2 php84-calendar php84-cgi php84-common php84-ctype php84-curl php84-dba php84-dev php84-doc php84-dom php84-embed php84-enchant php84-exif php84-ffi php84-fileinfo php84-fpm php84-ftp php84-gd php84-gettext php84-gmp php84-iconv php84-imap php84-intl php84-ldap php84-litespeed php84-mbstring php84-mysqli php84-mysqlnd php84-odbc php84-opcache php84-openssl php84-pcntl php84-pdo php84-pdo_dblib php84-pdo_mysql php84-pdo_odbc php84-pdo_pgsql php84-pdo_sqlite php84-pear php84-pgsql php84-phar php84-phpdbg php84-posix php84-pspell php84-session php84-shmop php84-simplexml php84-snmp php84-soap php84-sockets php84-sodium php84-sqlite3 php84-sysvmsg php84-sysvsem php84-sysvshm php84-tidy php84-tokenizer php84-xml php84-xmlreader php84-xmlwriter php84-xsl php84-zip php84-pecl-memcached php84-pecl-mcrypt php84-pecl-mongodb php84-pecl-redis "
 
 ENV ENV=~/.profile
 ENV SHELL="/bin/sh"
@@ -67,14 +64,14 @@ ENV TIMEZONE="${TZ}"
 ENV LANG="${LANGUAGE}"
 ENV TERM="xterm-256color"
 ENV HOSTNAME="casjaysdevdocker-ampache"
-ENV AMPACHE_PHP_VER=8.4
 
 USER ${USER}
 WORKDIR /root
 
 COPY ./rootfs/usr/local/bin/. /usr/local/bin/
 
-RUN echo "Updating the system and ensuring bash is installed"; \
+RUN set -e; \
+  echo "Updating the system and ensuring bash is installed"; \
   pkmgr update;pkmgr install bash
 
 RUN set -e; \
@@ -124,9 +121,8 @@ RUN echo "Updating system files "; \
   PHP_BIN="$(command -v ${PHP_VERSION} 2>/dev/null || true)"; \
   PHP_FPM="$(ls /usr/*bin/php*fpm* 2>/dev/null || true)"; \
   pip_bin="$(command -v python3 2>/dev/null || command -v python2 2>/dev/null || command -v python 2>/dev/null || true)"; \
-  py_version="$([ -n "$pip_bin" ] && $pip_bin --version 2>/dev/null | sed 's|[pP]ython ||g' | awk -F '.' '{print $1$2}' | grep '[0-9]' || echo "0")"; \
+  py_version="$(command $pip_bin --version | sed 's|[pP]ython ||g' | awk -F '.' '{print $1$2}' | grep '[0-9]' || true)"; \
   [ "$py_version" -gt "310" ] && pip_opts="--break-system-packages " || pip_opts=""; \
-  [ -n "$pip_bin" ] && [ -n "$pip_opts" ] && $pip_bin install $pip_opts --upgrade pip 2>/dev/null || true; \
   [ -f "/usr/share/zoneinfo/${TZ}" ] && ln -sf "/usr/share/zoneinfo/${TZ}" "/etc/localtime" || true; \
   [ -n "$PHP_BIN" ] && [ -z "$(command -v php 2>/dev/null)" ] && ln -sf "$PHP_BIN" "/usr/bin/php" 2>/dev/null || true; \
   [ -n "$PHP_FPM" ] && [ -z "$(command -v php-fpm 2>/dev/null)" ] && ln -sf "$PHP_FPM" "/usr/bin/php-fpm" 2>/dev/null || true; \
@@ -140,7 +136,7 @@ RUN echo "Updating system files "; \
 
 RUN echo "Custom Settings"; \
   $SHELL_OPTS; \
-  echo ""
+echo ""
 
 RUN echo "Setting up users and scripts "; \
   $SHELL_OPTS; \
@@ -157,7 +153,7 @@ RUN echo "Setting OS Settings "; \
 
 RUN echo "Custom Applications"; \
   $SHELL_OPTS; \
-  echo ""
+echo ""
 
 RUN echo "Running custom commands"; \
   if [ -f "/root/docker/setup/05-custom.sh" ];then echo "Running the custom script";/root/docker/setup/05-custom.sh||{ echo "Failed to execute /root/docker/setup/05-custom.sh" && exit 10; };echo "Done running the custom script";fi; \
@@ -223,8 +219,8 @@ LABEL org.opencontainers.image.authors="${LICENSE}"
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
 LABEL org.opencontainers.image.version="${BUILD_VERSION}"
 LABEL org.opencontainers.image.schema-version="${BUILD_VERSION}"
-LABEL org.opencontainers.image.url="https://hub.docker.com/r/casjaysdevdocker/ampache"
-LABEL org.opencontainers.image.source="https://hub.docker.com/r/casjaysdevdocker/ampache"
+LABEL org.opencontainers.image.url="docker.io"
+LABEL org.opencontainers.image.source="docker.io"
 LABEL org.opencontainers.image.vcs-type="Git"
 LABEL org.opencontainers.image.revision="${BUILD_VERSION}"
 LABEL org.opencontainers.image.source="https://github.com/casjaysdevdocker/ampache"
@@ -256,6 +252,5 @@ VOLUME [ "/config","/data" ]
 
 EXPOSE ${SERVICE_PORT} ${ENV_PORTS}
 
-CMD [ "tail", "-f", "/dev/null" ]
-ENTRYPOINT [ "tini","--","/usr/local/bin/entrypoint.sh" ]
+ENTRYPOINT [ "tini","--","/usr/local/bin/entrypoint.sh" "start" ]
 HEALTHCHECK --start-period=10m --interval=5m --timeout=15s CMD [ "/usr/local/bin/entrypoint.sh", "healthcheck" ]
