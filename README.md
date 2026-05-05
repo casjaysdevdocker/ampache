@@ -19,8 +19,8 @@ dockermgr update ampache
 ## Install and run container
   
 ```shell
-dockerHome="/var/lib/srv/$USER/docker/casjaysdevdocker/ampache/ampache/latest/rootfs"
-mkdir -p "/var/lib/srv/$USER/docker/ampache/rootfs"
+dockerHome="/var/lib/srv/$USER/docker/casjaysdevdocker/ampache/ampache/latest/volumes"
+mkdir -p "/var/lib/srv/$USER/docker/ampache/volumes"
 git clone "https://github.com/dockermgr/ampache" "$HOME/.local/share/CasjaysDev/dockermgr/ampache"
 cp -Rfva "$HOME/.local/share/CasjaysDev/dockermgr/ampache/rootfs/." "$dockerHome/"
 docker run -d \
@@ -47,8 +47,8 @@ services:
       - TZ=America/New_York
       - HOSTNAME=ampache
     volumes:
-      - "/var/lib/srv/$USER/docker/casjaysdevdocker/ampache/ampache/latest/rootfs/data:/data:z"
-      - "/var/lib/srv/$USER/docker/casjaysdevdocker/ampache/ampache/latest/rootfs/config:/config:z"
+      - "/var/lib/srv/$USER/docker/casjaysdevdocker/ampache/ampache/latest/volumes/data:/data:z"
+      - "/var/lib/srv/$USER/docker/casjaysdevdocker/ampache/ampache/latest/volumes/config:/config:z"
     ports:
       - 80:80
     restart: always
