@@ -1,0 +1,53 @@
+# casjaysdevdocker/ampache - MariaDB server config
+#
+# Wipe-and-replace via 05-custom.sh; user edits live at /config/my.cnf.d/.
+
+[client]
+port = 3306
+socket = /run/mysqld/mysqld.sock
+default-character-set = utf8mb4
+
+[mysql]
+no_auto_rehash
+default-character-set = utf8mb4
+prompt = '\u@\h [\d]> '
+
+[mysqldump]
+max_allowed_packet = 64M
+
+[mysqld_safe]
+log-error = /data/logs/mariadb/mariadb.err.log
+pid-file = /run/mysqld/mariadb.pid
+
+[mysqld]
+user = mysql
+datadir = /data/db/mariadb
+socket = /run/mysqld/mysqld.sock
+port = 3306
+bind-address = 127.0.0.1
+pid-file = /run/mysqld/mariadb.pid
+log-error = /data/logs/mariadb/mariadb.err.log
+
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+default-storage-engine = InnoDB
+
+max_allowed_packet = 64M
+max_connections = 100
+open_files_limit = 16384
+key_buffer_size = 32M
+table_open_cache = 256
+
+innodb_buffer_pool_size = 256M
+innodb_log_file_size = 64M
+innodb_flush_log_at_trx_commit = 2
+innodb_file_per_table = 1
+
+slow_query_log = 1
+slow_query_log_file = /data/logs/mariadb/mariadb-slow.log
+long_query_time = 2
+
+skip-name-resolve
+
+[mariadb]
+plugin_load_add = auth_socket

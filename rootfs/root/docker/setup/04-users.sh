@@ -1,38 +1,26 @@
 #!/usr/bin/env bash
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202502050828-git
-# @@Author           :  CasjaysDev
-# @@Contact          :  CasjaysDev <docker-admin@casjaysdev.pro>
-# @@License          :  MIT
-# @@ReadME           :
-# @@Copyright        :  Copyright 2023 CasjaysDev
-# @@Created          :  Mon Aug 28 06:48:42 PM EDT 2023
-# @@File             :  04-users.sh
-# @@Description      :  script to run users
+# casjaysdevdocker/ampache - 04-users.sh
+# Defensive user/group creation. The Alpine apache2 and mariadb packages
+# normally create their service users, but we ensure here.
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# shellcheck shell=bash
-# shellcheck disable=SC2016
-# shellcheck disable=SC2031
-# shellcheck disable=SC2120
-# shellcheck disable=SC2155
-# shellcheck disable=SC2199
-# shellcheck disable=SC2317
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Set bash options
 set -o pipefail
 [ "$DEBUGGER" = "on" ] && echo "Enabling debugging" && set -x$DEBUGGER_OPTIONS
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Set env variables
+
 exitCode=0
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Predefined actions
+if ! getent group apache >/dev/null 2>&1; then
+  addgroup -S apache 2>/dev/null || true
+fi
+if ! getent passwd apache >/dev/null 2>&1; then
+  adduser -S -G apache -h /var/www -s /sbin/nologin apache 2>/dev/null || true
+fi
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Main script
+if ! getent group mysql >/dev/null 2>&1; then
+  addgroup -S mysql 2>/dev/null || true
+fi
+if ! getent passwd mysql >/dev/null 2>&1; then
+  adduser -S -G mysql -h /data/db/mariadb -s /sbin/nologin mysql 2>/dev/null || true
+fi
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Set the exit code
-#exitCode=$?
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 exit $exitCode
