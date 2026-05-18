@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602061352-git
+##@Version           :  202605052024-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
 # @@ReadME           :  entrypoint.sh --help
 # @@Copyright        :  Copyright: (c) 2026 Jason Hempstead, Casjays Developments
-# @@Created          :  Tuesday, May 05, 2026 14:38 EDT
+# @@Created          :  Wednesday, May 13, 2026 14:31 EDT
 # @@File             :  entrypoint.sh
 # @@Description      :  Entrypoint file for ampache
 # @@Changelog        :  New script
@@ -25,7 +25,13 @@ trap 'retVal=$?;[ "$SERVICE_IS_RUNNING" != "yes" ] && [ -f "$SERVICE_PID_FILE" ]
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # setup debugging - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 [ -f "/config/.debug" ] && [ -z "$DEBUGGER_OPTIONS" ] && export DEBUGGER_OPTIONS="$(<"/config/.debug")" || DEBUGGER_OPTIONS="${DEBUGGER_OPTIONS:-}"
-{ [ "$DEBUGGER" = "on" ] || [ -f "/config/.debug" ]; } && echo "Enabling debugging" && set -o pipefail -x$DEBUGGER_OPTIONS && export DEBUGGER="on" || set -o pipefail
+if [ "$DEBUGGER" = "on" ] || [ -f "/config/.debug" ]; then
+  echo "Enabling debugging"
+  set -o pipefail -x$DEBUGGER_OPTIONS
+  export DEBUGGER="on"
+else
+  set -o pipefail
+fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 PATH="/usr/local/etc/docker/bin:/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -87,8 +93,8 @@ SERVICE_UID="${SERVICE_UID:-0}"
 SERVICE_GID="${SERVICE_GID:-0}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User and group in which the service switches to - IE: nginx,apache,mysql,postgres
-#SERVICE_USER="${SERVICE_USER:-ampache}"   # execute command as another user
-#SERVICE_GROUP="${SERVICE_GROUP:-ampache}" # Set the service group
+#SERVICE_USER="${SERVICE_USER:-example}"   # execute command as another user
+#SERVICE_GROUP="${SERVICE_GROUP:-example}" # Set the service group
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Secondary ports
 # specifiy other ports
@@ -357,7 +363,7 @@ if [ "$ENTRYPOINT_FIRST_RUN" != "no" ]; then
   fi
   # - - - - - - - - - - - - - - - - - - - - - - - - -
   if [ -f "/etc/hostname" ]; then
-    if [ -n "$(type -P hostname 2>/dev/null)" ]; then
+    if command -v hostname &>/dev/null; then
       hostname -F "/etc/hostname" 2>/dev/null || true
     else
       HOSTNAME="$(<"/etc/hostname")" 2>/dev/null || true
@@ -372,7 +378,7 @@ if [ "$ENTRYPOINT_FIRST_RUN" != "no" ]; then
   # - - - - - - - - - - - - - - - - - - - - - - - - -
   # import resolv.conf file into container
   if [ "$CUSTOM_DNS" != "yes" ] && [ -f "/usr/local/etc/resolv.conf" ] && [ "$UPDATE_FILE_RESOLV" = "yes" ]; then
-    cat "/usr/local/etc/resolv.conf" >"/etc/resolv.conf" 2>/dev/null || true
+    cp -f "/usr/local/etc/resolv.conf" "/etc/resolv.conf" 2>/dev/null || true
   fi
   # - - - - - - - - - - - - - - - - - - - - - - - - -
   if [ -n "$HOME" ] && [ -d "/usr/local/etc/skel" ]; then
@@ -383,12 +389,13 @@ if [ "$ENTRYPOINT_FIRST_RUN" != "no" ]; then
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# Delete any .gitkeep files
+# Delete any .gitkeep files (bash * does not match dotfiles by default,
+# so the explicit /.gitkeep path is required at each depth)
 if [ -d "/data" ]; then
-  rm -Rf "/data/.gitkeep" "/data"/*/*.gitkeep 2>/dev/null || true
+  rm -Rf "/data/.gitkeep" "/data"/*/.gitkeep 2>/dev/null || true
 fi
 if [ -d "/config" ]; then
-  rm -Rf "/config/.gitkeep" "/config"/*/*.gitkeep 2>/dev/null || true
+  rm -Rf "/config/.gitkeep" "/config"/*/.gitkeep 2>/dev/null || true
 fi
 if [ -f "/usr/local/bin/.gitkeep" ]; then
   rm -Rf "/usr/local/bin/.gitkeep" 2>/dev/null || true
@@ -442,7 +449,7 @@ fi
 # if no pid assume container restart - clean stale files on restart
 if [ -f "$ENTRYPOINT_PID_FILE" ]; then
   # Check if the PID in the file is still running
-  entrypoint_pid=$(cat "$ENTRYPOINT_PID_FILE" 2>/dev/null || echo "")
+  entrypoint_pid=$(<"$ENTRYPOINT_PID_FILE") 2>/dev/null
   if [ -n "$entrypoint_pid" ] && kill -0 "$entrypoint_pid" 2>/dev/null; then
     # Process is still running, don't restart services
     START_SERVICES="no"
@@ -451,12 +458,12 @@ if [ -f "$ENTRYPOINT_PID_FILE" ]; then
     # PID file exists but process is dead - this is a restart
     START_SERVICES="yes"
     # Clean any stale PID files on restart
-    rm -f /run/__start_init_scripts.pid /run/init.d/*.pid /run/*.pid 2>/dev/null || true
+    rm -f /run/.start_init_scripts.pid /run/init.d/*.pid /run/*.pid 2>/dev/null || true
   fi
 else
   START_SERVICES=yes
   # Clean any stale PID files on first run
-  rm -f /run/__start_init_scripts.pid /run/init.d/*.pid /run/*.pid 2>/dev/null || true
+  rm -f /run/.start_init_scripts.pid /run/init.d/*.pid /run/*.pid 2>/dev/null || true
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 [ "$ENTRYPOINT_MESSAGE" = "yes" ] && __printf_space "40" "The containers ip address is:" "$CONTAINER_IP4_ADDRESS"
@@ -581,13 +588,13 @@ healthcheck)
     services="$(echo "${SERVICES_LIST//,/ }")"
     healthMessage="Everything seems to be running"
     [ "$healthEnabled" = "yes" ] || exit 0
-    if [ -d "/run/healthcheck" ] && [ "$(ls -A "/run/healthcheck" | wc -l)" -ne 0 ]; then
+    if [ -d "/run/healthcheck" ] && ! __is_dir_empty "/run/healthcheck"; then
       for service in /run/healthcheck/*; do
         name="${service##*/}"
         services+="$name "
       done
     fi
-    services="$(echo "$services" | tr ' ' '\n' | sort -u | grep -v '^$')"
+    services="$(printf '%s\n' $services | sort -u | grep -v '^$')"
     for proc in $services; do
       if [ -n "$proc" ]; then
         if ! __pgrep "$proc"; then
@@ -597,7 +604,7 @@ healthcheck)
       fi
     done
     for port in $ports; do
-      if [ -n "$(type -P netstat)" ] && [ -n "$port" ]; then
+      if command -v netstat &>/dev/null && [ -n "$port" ]; then
         if ! netstat -taupln | grep -q ":$port "; then
           echo "$port isn't open" >&2
           healthStatus=$((healthStatus + 1))
@@ -621,14 +628,14 @@ healthcheck)
   # show open ports
 ports)
   shift 1
-  ports="$(__netstat -taupln | awk -F ' ' '{print $4}' | awk -F ':' '{print $2}' | sort --unique --version-sort | grep -v '^$' | grep '^' || echo '')"
+  ports="$(__netstat -taupln 2>/dev/null | awk '{ split($4, a, ":"); if (a[2] != "") print a[2] }' | sort -uV)"
   [ -n "$ports" ] && printf '%s\n%s\n' "The following are servers:" "$ports" | tr '\n' ' '
   exit $?
   ;;
   # show running processes
 procs)
   shift 1
-  ps="$(__ps axco command | grep -vE 'COMMAND|grep|ps' | sort -u || grep '^' || echo '')"
+  ps="$(__ps axco command 2>/dev/null | grep -vE '^(COMMAND|grep|ps)$' | sort -u)"
   [ -n "$ps" ] && printf '%s\n%s\n' "Found the following processes" "$ps" | tr '\n' ' '
   exit $?
   ;;

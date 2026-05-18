@@ -1,6 +1,6 @@
 ## 👋 Welcome to ampache 🚀  
 
-ampache README  
+A self-contained Docker image for [Ampache](https://ampache.org/), the open-source web-based music streaming server. Bundles Apache 2, PHP 8.4 via PHP-FPM, MariaDB, and Ampache itself. First run opens the Ampache web installer at `http://localhost:80/`.
   
   
 ## Install my system scripts  
@@ -54,6 +54,35 @@ services:
     restart: always
 ```
   
+## Environment variables  
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TZ` | `America/New_York` | Container timezone (sets PHP date.timezone) |
+| `MARIADB_ROOT_USER_NAME` | `root` | MariaDB root username |
+| `MARIADB_ROOT_PASS_WORD` | `random` | MariaDB root password (auto-generated if `random`) |
+| `MARIADB_USER_NAME` | `ampache` | MariaDB application username |
+| `MARIADB_USER_PASS_WORD` | `random` | MariaDB application password (auto-generated if `random`) |
+| `DATABASE_CREATE` | `ampache` | MariaDB database name to create |
+| `HOSTNAME` | `ampache` | Container hostname used in Apache vhost |
+| `DEBUGGER` | _(unset)_ | Set to `on` to enable bash `set -x` debugging |
+
+Passwords generated on first run are saved to `/config/secure/auth/`.
+  
+## Volumes  
+
+| Path | Purpose |
+|------|---------|
+| `/config` | All user-editable config files (Apache 2, PHP 8.4, MariaDB, Ampache) |
+| `/data` | MariaDB data (`/data/db/mariadb`), logs (`/data/logs/`), and media library |
+
+## Ports  
+
+| Port | Protocol | Description |
+|------|----------|-------------|
+| `80` | HTTP | Ampache web UI and API |
+| `443` | HTTPS | Available when SSL is enabled via `/config/enable/ssl` |
+
 ## Get source files  
   
 ```shell

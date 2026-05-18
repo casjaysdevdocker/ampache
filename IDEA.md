@@ -1,0 +1,3 @@
+# What this image is
+
+A self-contained Docker image for [Ampache](https://ampache.org/), the open-source web-based music streaming server. The image bundles the full application stack in a single Alpine Linux container: Apache 2 as the web server, PHP 8.4 via PHP-FPM for application execution, MariaDB as the relational database, and the Ampache PHP application itself pre-installed under `/usr/local/share/ampache`. On first run, navigating to `http://localhost:80/` lands on the Ampache web installer (`install.php`), which provisions the database and creates the initial admin account. After installation, users can catalog and stream their music libraries, manage users and playlists, and connect media players via Ampache's API or DLNA/UPnP capabilities.
