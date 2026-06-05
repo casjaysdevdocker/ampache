@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605052024-git
+##@Version           :  202606041210-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
 # @@ReadME           :  entrypoint.sh --help
 # @@Copyright        :  Copyright: (c) 2026 Jason Hempstead, Casjays Developments
-# @@Created          :  Wednesday, May 13, 2026 14:31 EDT
+# @@Created          :  Friday, Jun 05, 2026 18:11 EDT
 # @@File             :  entrypoint.sh
-# @@Description      :  Entrypoint file for ampache
+# @@Description      :  Entrypoint file for alpine
 # @@Changelog        :  New script
 # @@TODO             :  Better documentation
 # @@Other            :  
@@ -21,23 +21,25 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # run trap command on exit
-trap 'retVal=$?;[ "$SERVICE_IS_RUNNING" != "yes" ] && [ -f "$SERVICE_PID_FILE" ] && rm -Rf "$SERVICE_PID_FILE";exit $retVal' INT TERM PWR
+trap 'retVal=$?;[ "$SERVICE_IS_RUNNING" != "yes" ] && [ -f "$SERVICE_PID_FILE" ] && rm -Rf "$SERVICE_PID_FILE";exit $retVal' INT TERM
+trap 'retVal=$?;[ "$SERVICE_IS_RUNNING" != "yes" ] && [ -f "$SERVICE_PID_FILE" ] && rm -Rf "$SERVICE_PID_FILE";exit $retVal' SIGPWR 2>/dev/null || true
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # setup debugging - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 [ -f "/config/.debug" ] && [ -z "$DEBUGGER_OPTIONS" ] && export DEBUGGER_OPTIONS="$(<"/config/.debug")" || DEBUGGER_OPTIONS="${DEBUGGER_OPTIONS:-}"
 if [ "$DEBUGGER" = "on" ] || [ -f "/config/.debug" ]; then
   echo "Enabling debugging"
-  set -o pipefail -x$DEBUGGER_OPTIONS
+  set -eo pipefail
+  [ -n "$DEBUGGER_OPTIONS" ] && set -"$DEBUGGER_OPTIONS"
   export DEBUGGER="on"
 else
-  set -o pipefail
+  set -eo pipefail
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 PATH="/usr/local/etc/docker/bin:/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set bash options
 SCRIPT_FILE="$0"
-CONTAINER_NAME="ampache"
+CONTAINER_NAME="alpine"
 SCRIPT_NAME="${SCRIPT_FILE##*/}"
 CONTAINER_NAME="${ENV_CONTAINER_NAME:-$CONTAINER_NAME}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -59,8 +61,8 @@ case "$1" in
 # Help message
 -h | --help)
   shift 1
-  echo 'Docker container for '$CONTAINER_NAME''
-  echo "Usage: $CONTAINER_NAME [help tail cron exec start init shell certbot ssl procs ports healthcheck backup command]"
+  echo "Docker container for $CONTAINER_NAME"
+  echo "Usage: $CONTAINER_NAME [help tail cron exec start init shell procs ports healthcheck backup command]"
   echo ""
   exit 0
   ;;
@@ -93,8 +95,8 @@ SERVICE_UID="${SERVICE_UID:-0}"
 SERVICE_GID="${SERVICE_GID:-0}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User and group in which the service switches to - IE: nginx,apache,mysql,postgres
-#SERVICE_USER="${SERVICE_USER:-example}"   # execute command as another user
-#SERVICE_GROUP="${SERVICE_GROUP:-example}" # Set the service group
+#SERVICE_USER="${SERVICE_USER:-alpine}"   # execute command as another user
+#SERVICE_GROUP="${SERVICE_GROUP:-alpine}" # Set the service group
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Secondary ports
 # specifiy other ports
@@ -149,13 +151,10 @@ export DOMAINNAME="$(hostname -d)"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Default directories
 export SSL_DIR="${SSL_DIR:-/config/ssl}"
-export SSL_CA="${SSL_CERT:-/config/ssl/ca.crt}"
+export SSL_CA="${SSL_CA:-/config/ssl/ca.crt}"
 export SSL_KEY="${SSL_KEY:-/config/ssl/localhost.pem}"
 export SSL_CERT="${SSL_CERT:-/config/ssl/localhost.crt}"
 export LOCAL_BIN_DIR="${LOCAL_BIN_DIR:-/usr/local/bin}"
-export DEFAULT_DATA_DIR="${DEFAULT_DATA_DIR:-/usr/local/share/template-files/data}"
-export DEFAULT_CONF_DIR="${DEFAULT_CONF_DIR:-/usr/local/share/template-files/config}"
-export DEFAULT_TEMPLATE_DIR="${DEFAULT_TEMPLATE_DIR:-/usr/local/share/template-files/defaults}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Backup settings
 export BACKUP_MAX_DAYS="${BACKUP_MAX_DAYS:-}"
@@ -170,7 +169,7 @@ export NGINX_CONFIG_FILE="${NGINX_CONFIG_FILE:-$(__find_nginx_conf)}"
 export MYSQL_CONFIG_FILE="${MYSQL_CONFIG_FILE:-$(__find_mysql_conf)}"
 export PGSQL_CONFIG_FILE="${PGSQL_CONFIG_FILE:-$(__find_pgsql_conf)}"
 export MONGODB_CONFIG_FILE="${MONGODB_CONFIG_FILE:-$(__find_mongodb_conf)}"
-export ENTRYPOINT_PID_FILE="${ENTRYPOINT_PID_FILE:-$ENTRYPOINT_PID_FILE}"
+export ENTRYPOINT_PID_FILE="${ENTRYPOINT_PID_FILE:-/run/.entrypoint.pid}"
 export ENTRYPOINT_INIT_FILE="${ENTRYPOINT_INIT_FILE:-/config/.entrypoint.done}"
 export ENTRYPOINT_DATA_INIT_FILE="${ENTRYPOINT_DATA_INIT_FILE:-/data/.docker_has_run}"
 export ENTRYPOINT_CONFIG_INIT_FILE="${ENTRYPOINT_CONFIG_INIT_FILE:-/config/.docker_has_run}"
@@ -212,17 +211,15 @@ else
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # clean ENV_PORTS variables
-ENV_PORTS="${ENV_PORTS//,/ }"  #
-ENV_PORTS="${ENV_PORTS//\/*/}" #
+ENV_PORTS="${ENV_PORTS//,/ }"
+ENV_PORTS="${ENV_PORTS//\/*/}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # clean SERVER_PORTS variables
-SERVER_PORTS="${SERVER_PORTS//,/ }"  #
-SERVER_PORTS="${SERVER_PORTS//\/*/}" #
+SERVER_PORTS="${SERVER_PORTS//,/ }"
+SERVER_PORTS="${SERVER_PORTS//\/*/}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # clean WEB_SERVER_PORTS variables
-WEB_SERVER_PORTS="${WEB_SERVER_PORT//\/*/}"                             #
-WEB_SERVER_PORTS="${WEB_SERVER_PORTS//\/*/}"                            #
-WEB_SERVER_PORTS="${WEB_SERVER_PORT//,/ } ${ENV_WEB_SERVER_PORTS//,/ }" #
+WEB_SERVER_PORTS="${WEB_SERVER_PORT//,/ } ${ENV_WEB_SERVER_PORTS//,/ }"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # rewrite and merge variables
 ENV_PORTS="$(__format_variables "$ENV_PORTS" || false)"
@@ -294,7 +291,7 @@ fi
 if [ "$ENTRYPOINT_FIRST_RUN" != "no" ]; then
   if [ "$CONFIG_DIR_INITIALIZED" = "no" ] || [ "$DATA_DIR_INITIALIZED" = "no" ]; then
     if [ "$ENTRYPOINT_MESSAGE" = "yes" ]; then
-      echo "Executing entrypoint script for ampache"
+      echo "Executing entrypoint script for alpine"
     fi
   fi
   # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -407,21 +404,6 @@ if [ "$ENTRYPOINT_FIRST_RUN" != "no" ] || [ "$CONFIG_DIR_INITIALIZED" = "no" ] |
   # Setup bin directory - /config/bin > /usr/local/bin
   __initialize_custom_bin_dir
   # - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Copy default system configs - /usr/local/share/template-files/defaults > /config/
-  if [ "$CONFIG_DIR_INITIALIZED" = "no" ]; then
-    __initialize_default_templates
-  fi
-  # - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Copy custom config files - /usr/local/share/template-files/config > /config/
-  if [ "$CONFIG_DIR_INITIALIZED" = "no" ]; then
-    __initialize_config_dir
-  fi
-  # - - - - - - - - - - - - - - - - - - - - - - - - -
-  # Copy custom data files - /usr/local/share/template-files/data > /data/
-  if [ "$DATA_DIR_INITIALIZED" = "no" ]; then
-    __initialize_data_dir
-  fi
-  # - - - - - - - - - - - - - - - - - - - - - - - - -
   # Initialize SSL certificates
   __initialize_ssl_certs
   # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -489,7 +471,7 @@ __set_user_group_id $SERVICE_USER ${SERVICE_UID:-} ${SERVICE_GID:-}
 __run_message
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Just start services
-START_SERVICES="${START_SERVICES:-SYSTEM_INIT}"
+START_SERVICES="${START_SERVICES:-yes}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Determine if we should start services based on command
 # Only skip service start for the 'init' command
@@ -547,10 +529,10 @@ logs)
     tail -Fq /data/logs/*/*
     ;;
   clean)
-    log_files="$(find "/data/logs" -type f)"
+    mapfile -t log_files < <(find "/data/logs" -type f 2>/dev/null)
     for log in "${log_files[@]}"; do
       __log_info "Clearing log file: $log"
-      printf '' >$log
+      printf '' >"$log"
     done
     ;;
   *)
@@ -585,7 +567,7 @@ healthcheck)
     healthPorts="${WEB_SERVER_PORTS:-}"
     healthEndPoints="${HEALTH_ENDPOINTS:-}"
     SERVICES_LIST="${arguments:-$SERVICES_LIST}"
-    services="$(echo "${SERVICES_LIST//,/ }")"
+    services="${SERVICES_LIST//,/ }"
     healthMessage="Everything seems to be running"
     [ "$healthEnabled" = "yes" ] || exit 0
     if [ -d "/run/healthcheck" ] && ! __is_dir_empty "/run/healthcheck"; then
@@ -603,7 +585,7 @@ healthcheck)
         fi
       fi
     done
-    for port in $ports; do
+    for port in $healthPorts; do
       if command -v netstat &>/dev/null && [ -n "$port" ]; then
         if ! netstat -taupln | grep -q ":$port "; then
           echo "$port isn't open" >&2
@@ -637,27 +619,6 @@ procs)
   shift 1
   ps="$(__ps axco command 2>/dev/null | grep -vE '^(COMMAND|grep|ps)$' | sort -u)"
   [ -n "$ps" ] && printf '%s\n%s\n' "Found the following processes" "$ps" | tr '\n' ' '
-  exit $?
-  ;;
-  # setup ssl
-ssl)
-  shift 1
-  __create_ssl_cert
-  exit $?
-  ;;
-# manage ssl certificate
-certbot)
-  shift 1
-  CERT_BOT_ENABLED="yes"
-  if [ "$1" = "create" ]; then
-    shift 1
-    __certbot "create"
-  elif [ "$1" = "renew" ]; then
-    shift 1
-    __certbot "renew certonly --force-renew"
-  else
-    __exec_command "certbot" "$@"
-  fi
   exit $?
   ;;
 # Launch shell
